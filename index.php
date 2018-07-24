@@ -312,7 +312,7 @@
 	<div class="section">
     <h1>
         <strong>
-			<a href="/">网址缩短</a>
+			<a href="./">网址缩短</a>
         </strong>
     </h1>
     <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>" method="post">
