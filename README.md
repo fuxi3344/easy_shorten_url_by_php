@@ -1,7 +1,7 @@
 # 简单的网址缩短程序
 ## 网站示例
 
-![Snipaste_2018-07-24_23-35-47](https://lichen0.cn/Snipaste/Snipaste_2018-07-24_23-35-47.png)
+![Snipaste_2018-07-24_23-35-47](https://i.lichen0.com/Snipaste/Snipaste_2018-07-24_23-35-47.png)
 
 - Web环境：Apache2.4（需开启网址重写）
 - 数据库：Mysql
@@ -9,11 +9,11 @@
 ## 安装方法
 1. 下载源码到电脑，修改config.php中的域名和数据库配置
 
-![Snipaste_2018-07-24_23-46-57](https://lichen0.cn/Snipaste/Snipaste_2018-07-24_23-46-57.png)
+![Snipaste_2018-07-24_23-46-57](https://i.lichen0.com/Snipaste/Snipaste_2018-07-24_23-46-57.png)
 
 2. 使用phpmyadmin或Navicat Premium执行源码中的dwz_url.sql，成功后数据库结构如下，其中md5为索引
 
-![Snipaste_2018-07-24_23-24-50](https://lichen0.cn/Snipaste/Snipaste_2018-07-24_23-24-50.png)
+![Snipaste_2018-07-24_23-24-50](https://i.lichen0.com/Snipaste/Snipaste_2018-07-24_23-24-50.png)
 
 3. 将源码上传至网页根目录即可访问
 
