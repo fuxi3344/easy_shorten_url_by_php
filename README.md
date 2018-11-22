@@ -1,19 +1,17 @@
 # 简单的网址缩短程序
 ## 网站示例
-
-![Snipaste_2018-07-24_23-35-47](https://i.lichen0.com/Snipaste/Snipaste_2018-07-24_23-35-47.png)
-
+![demo](https://img03.sogoucdn.com/app/a/100520146/5d094eb3ab03c9f79b9fa06392b1930d)
 - Web环境：Apache2.4（需开启网址重写）
 - 数据库：Mysql
 
 ## 安装方法
 1. 下载源码到电脑，修改config.php中的域名和数据库配置
 
-![Snipaste_2018-07-24_23-46-57](https://i.lichen0.com/Snipaste/Snipaste_2018-07-24_23-46-57.png)
+![Snipaste_2018-07-24_23-46-57.png](https://img01.sogoucdn.com/app/a/100520146/a5b31bf131ba9835c685051e19be8501)
 
 2. 使用phpmyadmin或Navicat Premium执行源码中的dwz_url.sql，成功后数据库结构如下，其中md5为索引
 
-![Snipaste_2018-07-24_23-24-50](https://i.lichen0.com/Snipaste/Snipaste_2018-07-24_23-24-50.png)
+![Snipaste_2018-07-24_23-24-50.png](https://img04.sogoucdn.com/app/a/100520146/021bab663143e2f098712b8410b2b83b)
 
 3. 将源码上传至网页根目录即可访问
 
