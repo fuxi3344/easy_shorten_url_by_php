@@ -3,82 +3,94 @@
 	
 	$dwz = '';//置空变量
 	
-	//获得IP地址
-	if (getenv("HTTP_CLIENT_IP"))
-	$ip = getenv("HTTP_CLIENT_IP");
-	else if(getenv("HTTP_X_FORWARDED_FOR"))
-	$ip = getenv("HTTP_X_FORWARDED_FOR");
-	else if(getenv("REMOTE_ADDR"))
-	$ip = getenv("REMOTE_ADDR");
-	else $ip = "0.0.0.0";
+	$ip = Get_IP();//获得IP地址
 	
-	if (!empty($_GET['m']))//判断是否需要短网址跳转
+	if (!empty($_GET['m']))//进行短网址跳转
     {
-        $md5 = $_GET['m'];//获得网址的短md5值
-		global $servername, $username, $password, $dbname, $tablename;
-        $conn = new mysqli($servername, $username, $password, $dbname);
-        if ($conn->connect_error)
-        {
-            die('Failed');
-        }
-		
-		//查询对应原网址
-		$stmt = $conn->prepare("SELECT url FROM $tablename WHERE md5=?");
-		$stmt->bind_param("s", $md5);
-        $stmt->execute();
-		$result = $stmt->get_result();
-        if ($result->num_rows > 0)
-        {
-			//找到网址，重定向
-            $row = $result->fetch_assoc();
-			$url = $row["url"];
-			$conn->close();
-			header("location: $url");
-			exit;
-        }
-        else
-        {
-			$conn->close();
-            die('404 Not FOound!');
-        }
-    }
-	
-	if (!empty($_POST['url']))//判断url参数是否存在
-    {
-		if (!preg_match("/^((https|http|ftp)?:\/\/)[^\s]+$/",$_POST['url']))//网址格式正则校验
+		$mid = $_GET['m'];
+		if ($Memcached_Switch)//判断是否开启缓存
 		{
-			$dwz = '网址需加http(s)://';
+			$url = OpMemcached('get', 'dwz_url_'.$mid);//读取缓存
+			if ($url == '')
+			{
+				//缓存未命中
+				$id = base_convert($mid,36,10);//将36进制转换回十进制
+				$result = RunSQL("SELECT url FROM $Mysql_Tablename WHERE id=?", true, array('s', $id));//根据十进制id查Mysql
+				if ($result->num_rows > 0)//找到网址，重定向
+				{
+					$row = $result->fetch_assoc();
+					$url = $row["url"];
+					OpMemcached('set', 'dwz_url_'.$mid, $url);//更新缓存
+					header("location: $url");
+					exit;
+				}
+				else
+				{
+					//数据库中未找到
+					die('ERROR, Not Found!');
+				}
+			}
+			else
+			{
+				//缓存命中，直接跳转
+				header("location: $url");
+				exit;
+			}
 		}
 		else
 		{
-			$md5 = substr(md5($_POST['url']), 8, 16);//对网址进行16位md5加密
-			global $servername, $username, $password, $dbname, $tablename;
-			$conn = new mysqli($servername, $username, $password, $dbname);
-			if ($conn->connect_error)
-			{
-				die('Failed');
-			}
-			
-			//查询此网址是否存在
-			$stmt = $conn->prepare("SELECT url FROM $tablename WHERE md5=?");
-			$stmt->bind_param("s", $md5);
-			$stmt->execute();
-			$result = $stmt->get_result();
+			//未开启缓存，查询MySQL后跳转（同缓存未命中）
+			$id = base_convert($mid,36,10);
+			$result = RunSQL("SELECT url FROM $Mysql_Tablename WHERE id=?", true, array('s', $id));
 			if ($result->num_rows > 0)
 			{
-				//存在直接输出短网址
-				$conn->close();
-				$dwz = '短网址：'.$host.$md5;
+				$row = $result->fetch_assoc();
+				$url = $row["url"];
+				header("location: $url");
+				exit;
+			}
+			else
+			{
+				die('ERROR, Not Found!');
+			}
+		}
+    }
+	
+	if (!empty($_POST['url']))//进行短网址新增
+    {
+		$url = $_POST['url'];
+		if (!preg_match("/^((https|http|ftp)?:\/\/)[^\s]+$/", $url))//网址格式正则校验
+		{
+			$dwz = '格式错误，网址需加http(s)://';
+		}
+		else
+		{
+			$result = RunSQL("SELECT id FROM $Mysql_Tablename WHERE url=?", true, array('s', $url));//查询此网址是否存在
+			if ($result->num_rows > 0)
+			{
+				//存在直接输出
+				$row = $result->fetch_assoc();
+				$dwz = '短网址：'.$Web_Host.base_convert($row['id'], 10, 36);
 			}
 			else
 			{
 				//不存在创建短网址后输出
-				$url = $_POST['url'];
-				$stmt = $conn->prepare("INSERT INTO $tablename (md5, url, build_time, ip) VALUES (?, ?, now(), ?)");
-				$stmt->bind_param("sss", $md5, $url, $ip);
-				$stmt->execute();
-				$conn->close();
-				$dwz = '短网址：'.$host.$md5;
+				RunSQL("INSERT INTO $Mysql_Tablename (url, time, ip) VALUES (?, now(), ?)", false, array('ss', $url, $ip));//创建
+				$result = RunSQL("SELECT id FROM $Mysql_Tablename WHERE url=?", true, array('s', $url));//查询创建结果（id）
+				if ($result->num_rows > 0)
+				{
+					$row = $result->fetch_assoc();
+					$mid = base_convert($row['id'], 10, 36);//id转换为36进制
+					if ($Memcached_Switch && $Memcached_AutoAdd)//判断缓存是否开启，是否需要立即添加
+					{
+						OpMemcached('set', 'dwz_url_'.$mid, $url);//添加缓存
+					}
+					$dwz = '短网址：'.$Web_Host.$mid;
+				}
+				else
+				{
+					$dwz = '建立短网址失败！';
+				}
 			}
 		}
     }
@@ -315,7 +327,7 @@
 			<a href="./">网址缩短</a>
         </strong>
     </h1>
-    <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>" method="post">
+    <form action="./" method="post">
         <div>
             <p class="p1">输入将要缩短的长网址:</p>
             <textarea class="text" id="url" name="url"></textarea>
