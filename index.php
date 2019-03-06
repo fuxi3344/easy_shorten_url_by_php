@@ -1,99 +1,115 @@
 <?php
-	require('config.php');//引入配置文件
-	
-	$dwz = '';//置空变量
-	
-	$ip = Get_IP();//获得IP地址
-	
-	if (!empty($_GET['m']))//进行短网址跳转
+require_once 'config.php'; //引入配置文件
+
+$dwz = ''; //置空变量
+
+$ip = Get_IP(); //获得IP地址
+
+if (!empty($_GET['m'])) //进行短网址跳转
+{
+    $mid = $_GET['m']; //获得跳转地址ID
+    if ($Memcached_Switch) //判断是否开启缓存
     {
-		$mid = $_GET['m'];
-		if ($Memcached_Switch)//判断是否开启缓存
-		{
-			$url = OpMemcached('get', 'dwz_url_'.$mid);//读取缓存
-			if ($url == '')
-			{
-				//缓存未命中
-				$id = base_convert($mid,36,10);//将36进制转换回十进制
-				$result = RunSQL("SELECT url FROM $Mysql_Tablename WHERE id=?", true, array('s', $id));//根据十进制id查Mysql
-				if ($result->num_rows > 0)//找到网址，重定向
-				{
-					$row = $result->fetch_assoc();
-					$url = $row["url"];
-					OpMemcached('set', 'dwz_url_'.$mid, $url);//更新缓存
-					header("location: $url");
-					exit;
-				}
-				else
-				{
-					//数据库中未找到
-					die('ERROR, Not Found!');
-				}
-			}
-			else
-			{
-				//缓存命中，直接跳转
-				header("location: $url");
-				exit;
-			}
-		}
-		else
-		{
-			//未开启缓存，查询MySQL后跳转（同缓存未命中）
-			$id = base_convert($mid,36,10);
-			$result = RunSQL("SELECT url FROM $Mysql_Tablename WHERE id=?", true, array('s', $id));
-			if ($result->num_rows > 0)
-			{
-				$row = $result->fetch_assoc();
-				$url = $row["url"];
-				header("location: $url");
-				exit;
-			}
-			else
-			{
-				die('ERROR, Not Found!');
-			}
-		}
+        $url = OpMemcached('get', 'dwz_url_' . $mid); //读取缓存
+        if ($url == '') {
+            //缓存未命中
+            $id = base_convert($mid, 36, 10); //将36进制转换回十进制
+            $conn = new mysqli($Mysql_Servername, $Mysql_Username, $Mysql_Password, $Mysql_DBname); // 创建连接
+            if ($conn->connect_error) { // 检测连接
+                die('数据库连接错误！');
+            }
+            $stmt = $conn->prepare("SELECT url FROM $Mysql_Tablename WHERE id=?"); //根据十进制id查Mysql
+            $stmt->bind_param('s', $id);
+            $stmt->execute(); //执行SQL
+            $result = $stmt->get_result(); //返回结果
+            $stmt->close(); //关闭预处理
+            $conn->close(); //关闭连接
+            if ($result->num_rows > 0) //找到网址，重定向
+            {
+                $row = $result->fetch_assoc();
+                $url = $row["url"];
+                OpMemcached('set', 'dwz_url_' . $mid, $url); //更新缓存
+                header("location: $url");
+                exit;
+            } else {
+                //数据库中未找到
+                die('ERROR, Not Found!');
+            }
+        } else {
+            //缓存命中，直接跳转
+            header("location: $url");
+            exit;
+        }
+    } else {
+        //未开启缓存，查询MySQL后跳转（同缓存未命中）
+        $id = base_convert($mid, 36, 10);
+        $conn = new mysqli($Mysql_Servername, $Mysql_Username, $Mysql_Password, $Mysql_DBname);
+        if ($conn->connect_error) {
+            die('数据库连接错误！');
+        }
+        $stmt = $conn->prepare("SELECT url FROM $Mysql_Tablename WHERE id=?"); //根据十进制id查Mysql
+        $stmt->bind_param('s', $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stmt->close();
+        $conn->close();
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $url = $row["url"];
+            header("location: $url");
+            exit;
+        } else {
+            die('ERROR, Not Found!');
+        }
     }
-	
-	if (!empty($_POST['url']))//进行短网址新增
+}
+
+if (!empty($_POST['url'])) //进行短网址新增
+{
+    $url = $_POST['url'];
+    if (!preg_match("/^((https|http|ftp)?:\/\/)[^\s]+$/", $url)) //网址格式正则校验
     {
-		$url = $_POST['url'];
-		if (!preg_match("/^((https|http|ftp)?:\/\/)[^\s]+$/", $url))//网址格式正则校验
-		{
-			$dwz = '格式错误，网址需加http(s)://';
-		}
-		else
-		{
-			$result = RunSQL("SELECT id FROM $Mysql_Tablename WHERE url=?", true, array('s', $url));//查询此网址是否存在
-			if ($result->num_rows > 0)
-			{
-				//存在直接输出
-				$row = $result->fetch_assoc();
-				$dwz = '短网址：'.$Web_Host.base_convert($row['id'], 10, 36);
-			}
-			else
-			{
-				//不存在创建短网址后输出
-				RunSQL("INSERT INTO $Mysql_Tablename (url, time, ip) VALUES (?, now(), ?)", false, array('ss', $url, $ip));//创建
-				$result = RunSQL("SELECT id FROM $Mysql_Tablename WHERE url=?", true, array('s', $url));//查询创建结果（id）
-				if ($result->num_rows > 0)
-				{
-					$row = $result->fetch_assoc();
-					$mid = base_convert($row['id'], 10, 36);//id转换为36进制
-					if ($Memcached_Switch && $Memcached_AutoAdd)//判断缓存是否开启，是否需要立即添加
-					{
-						OpMemcached('set', 'dwz_url_'.$mid, $url);//添加缓存
-					}
-					$dwz = '短网址：'.$Web_Host.$mid;
-				}
-				else
-				{
-					$dwz = '建立短网址失败！';
-				}
-			}
-		}
+        $dwz = '格式错误，网址需加http(s)://';
+    } else {
+        $conn = new mysqli($Mysql_Servername, $Mysql_Username, $Mysql_Password, $Mysql_DBname);
+        if ($conn->connect_error) {
+            die('数据库连接错误！');
+        }
+        $stmt = $conn->prepare("SELECT url FROM $Mysql_Tablename WHERE url=?"); //查询此网址是否存在
+        $stmt->bind_param('s', $url);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stmt->close();
+        if ($result->num_rows > 0) {
+            //存在直接输出
+            $row = $result->fetch_assoc();
+            $dwz = '短网址：' . $Web_Host . base_convert($row['id'], 10, 36);
+        } else {
+            //不存在创建短网址后输出
+            $stmt = $conn->prepare("INSERT INTO $Mysql_Tablename (url, time, ip) VALUES (?, now(), ?)"); //创建
+            $stmt->bind_param('ss', $url, $ip);
+            $stmt->execute();
+            $stmt->close();
+            $stmt = $conn->prepare("SELECT id FROM $Mysql_Tablename WHERE url=?"); //查询创建结果（id）
+            $stmt->bind_param('s', $url);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $stmt->close();
+            $conn->close();
+            if ($result->num_rows > 0) {
+                $row = $result->fetch_assoc();
+                $mid = base_convert($row['id'], 10, 36); //id转换为36进制
+                if ($Memcached_Switch && $Memcached_AutoAdd) //判断缓存是否开启，是否需要立即添加
+                {
+                    OpMemcached('set', 'dwz_url_' . $mid, $url); //添加缓存
+                }
+                $dwz = '短网址：' . $Web_Host . $mid;
+            } else {
+                $dwz = '建立短网址失败！';
+            }
+        }
     }
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -337,11 +353,10 @@
         </div>
 	</form>
 	<?php
-	if ($dwz != '')
-	{
-		echo "<h1>$dwz</h1>";
-	}
-	?>
+if ($dwz != '') {
+    echo "<h1>$dwz</h1>";
+}
+?>
     </div>
 </body>
 </html>
