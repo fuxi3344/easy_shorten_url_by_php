@@ -6,7 +6,7 @@
 - 短网址规则更改为36进制自动增加，避免md5重复的问题
 
 # 网站示例
-![demo](https://img03.sogoucdn.com/app/a/100520146/7718fbbf26c7125405b7b7750cdcc6be)
+![](https://ws1.sinaimg.cn/large/cf6ca285gy1g0t44upwu4j20n00g4wet.jpg)
 - Web环境：Apache或Nginx
 - 数据库：Mysql
 - 缓存：Memcached
@@ -17,7 +17,7 @@
 ## Web服务器
 
 1. 修改config.php中的配置文件中的数据库信息和Memcached缓存信息(如需开启缓存)
-![Snipaste_2018-11-25_21-34-31.png](https://img02.sogoucdn.com/app/a/100520146/b8d9fad414f1f36476a1fa11e4705441)
+![](https://ws1.sinaimg.cn/large/cf6ca285gy1g0t45148w9j213109bmyd.jpg)
 
 2. 上传index.php和config.php到网站目录，并开启网址重写
 
@@ -58,7 +58,7 @@ if (!-d $request_filename){
 ## 数据库
 使用phpmyadmin或Navicat Premium导入执行源码中的dwz_url.sql，成功后数据库结构如下，其中id为索引
 
-![Snipaste_2018-11-25_21-42-35.png](https://img04.sogoucdn.com/app/a/100520146/dfb575a786dbd67c0e6d758904840116)
+![](https://ws1.sinaimg.cn/large/cf6ca285gy1g0t456ecnnj20e802ot8l.jpg)
 
 
 ## 完成！GLHF!
